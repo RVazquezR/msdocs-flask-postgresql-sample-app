@@ -1,253 +1,116 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Análisis de Imágenes - Dashboard</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
-    <style>
-        .bg-gradient {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+{% extends "base.html" %}
+{% block title %}Imágenes procesadas{% endblock %}
+
+{% block head %}
+  {{ super() }}
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
+  <style>
+    .scala-brand {
+      color: #de3423;
+      font-weight: bold;
+    }
+    .table-responsive {
+      background-color: white;
+      border-radius: 5px;
+      padding: 15px;
+      box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    .btn-image {
+      margin-right: 5px;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="scala-brand"><i class="fas fa-table me-2"></i>Imágenes procesadas</h1>
+    <span class="badge bg-secondary" id="total-registros">Cargando...</span>
+  </div>
+
+  <div id="contenido-tabla" class="table-responsive"></div>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+  <script>
+    async function cargarDatos() {
+      try {
+        const response = await fetch('/datos');
+        const datos = await response.json();
+        document.getElementById('total-registros').textContent = `${datos.length} registros`;
+
+        if (datos.length === 0) {
+          document.getElementById('contenido-tabla').innerHTML = `
+            <div class="alert alert-info">
+              No hay registros aún. Sube imágenes desde la aplicación Scala.
+            </div>`;
+          return;
         }
-        .transition-all {
-            transition: all 0.3s ease;
-        }
-        .hover-scale:hover {
-            transform: scale(1.03);
-        }
-    </style>
-</head>
-<body class="bg-gray-100 min-h-screen">
-    <div class="bg-gradient text-white shadow-lg">
-        <div class="container mx-auto py-6 px-4">
-            <h1 class="text-3xl font-bold mb-2">Análisis de Imágenes</h1>
-            <p class="text-gray-200">Dashboard de visualización de datos de imágenes procesadas</p>
-        </div>
-    </div>
 
-    <div class="container mx-auto py-8 px-4">
-        <!-- Filtros y opciones de ordenación -->
-        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h2 class="text-xl font-semibold mb-4">Filtros y Ordenación</h2>
-            <form action="/" method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="username">
-                        Filtrar por usuario:
-                    </label>
-                    <input type="text" id="username" name="username" 
-                        value="{{ username_filter or '' }}"
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                </div>
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="sort_by">
-                        Ordenar por:
-                    </label>
-                    <select id="sort_by" name="sort_by" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                        <option value="timestamp" {% if current_sort == 'timestamp' %}selected{% endif %}>Fecha y hora</option>
-                        <option value="filename" {% if current_sort == 'filename' %}selected{% endif %}>Nombre de archivo</option>
-                        <option value="username" {% if current_sort == 'username' %}selected{% endif %}>Usuario</option>
-                        <option value="red_pixels" {% if current_sort == 'red_pixels' %}selected{% endif %}>Píxeles rojos</option>
-                        <option value="green_pixels" {% if current_sort == 'green_pixels' %}selected{% endif %}>Píxeles verdes</option>
-                        <option value="blue_pixels" {% if current_sort == 'blue_pixels' %}selected{% endif %}>Píxeles azules</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="order">
-                        Orden:
-                    </label>
-                    <select id="order" name="order" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                        <option value="desc" {% if current_order == 'desc' %}selected{% endif %}>Descendente</option>
-                        <option value="asc" {% if current_order == 'asc' %}selected{% endif %}>Ascendente</option>
-                    </select>
-                </div>
-                <div class="flex items-end">
-                    <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full">
-                        <i class="fas fa-filter mr-2"></i>Aplicar
-                    </button>
-                </div>
-            </form>
-        </div>
+        const tablaHtml = `
+          <table id="tabla" class="table table-striped table-hover">
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Nombre de archivo</th>
+                <th>Rojo</th>
+                <th>Verde</th>
+                <th>Azul</th>
+                <th>Fecha</th>
+                <th>Imágenes</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${datos.map(r => `
+                <tr>
+                  <td>${r.usuario}</td>
+                  <td>${r.nombreArchivo}</td>
+                  <td>${r.rojo}</td>
+                  <td>${r.verde}</td>
+                  <td>${r.azul}</td>
+                  <td>${new Date(r.fechaHora).toLocaleString()}</td>
+                  <td>
+                    ${r.hasOriginal 
+                      ? `<a href="/imagenes/${r.id}/original.bmp" target="_blank" class="btn btn-outline-primary btn-sm btn-image">Original</a>` 
+                      : `<span class="text-muted small me-2"><i class="fas fa-times-circle text-danger"></i> Sin original</span>`}
+                      
+                    ${r.hasByn 
+                      ? `<a href="/imagenes/${r.id}/byn.bmp" target="_blank" class="btn btn-outline-dark btn-sm btn-image">B/N</a>` 
+                      : `<span class="text-muted small me-2"><i class="fas fa-times-circle text-danger"></i> Sin B/N</span>`}
+                      
+                    ${r.hasPixelada 
+                      ? `<a href="/imagenes/${r.id}/pixelada.bmp" target="_blank" class="btn btn-outline-secondary btn-sm btn-image">Pixelada</a>` 
+                      : `<span class="text-muted small"><i class="fas fa-times-circle text-danger"></i> Sin pixelada</span>`}
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+        document.getElementById('contenido-tabla').innerHTML = tablaHtml;
 
-        <!-- Estadísticas generales -->
-        {% if image_data and image_data|length > 0 %}
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div class="bg-white rounded-lg shadow-md p-6 hover-scale transition-all">
-                <div class="flex items-center">
-                    <div class="rounded-full bg-blue-100 p-3 mr-4">
-                        <i class="fas fa-image text-blue-500 text-xl"></i>
-                    </div>
-                    <div>
-                        <p class="text-gray-500 text-sm">Total de imágenes</p>
-                        <h3 class="text-2xl font-bold">{{ image_data|length }}</h3>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-white rounded-lg shadow-md p-6 hover-scale transition-all">
-                <div class="flex items-center">
-                    <div class="rounded-full bg-green-100 p-3 mr-4">
-                        <i class="fas fa-user text-green-500 text-xl"></i>
-                    </div>
-                    <div>
-                        <p class="text-gray-500 text-sm">Usuarios únicos</p>
-                        <h3 class="text-2xl font-bold">
-                            {% set unique_users = [] %}
-                            {% for item in image_data %}
-                                {% if item.username not in unique_users %}
-                                    {% set _ = unique_users.append(item.username) %}
-                                {% endif %}
-                            {% endfor %}
-                            {{ unique_users|length }}
-                        </h3>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-white rounded-lg shadow-md p-6 hover-scale transition-all">
-                <div class="flex items-center">
-                    <div class="rounded-full bg-purple-100 p-3 mr-4">
-                        <i class="fas fa-calendar text-purple-500 text-xl"></i>
-                    </div>
-                    <div>
-                        <p class="text-gray-500 text-sm">Última actualización</p>
-                        <h3 class="text-2xl font-bold">
-                            {% if image_data %}
-                                {% set last_item = image_data|sort(attribute='timestamp', reverse=true)|first %}
-                                {{ last_item.timestamp }}
-                            {% else %}
-                                N/A
-                            {% endif %}
-                        </h3>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Gráfico de colores -->
-        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h2 class="text-xl font-semibold mb-4">Distribución de Colores</h2>
-            <canvas id="colorChart" width="400" height="200"></canvas>
-        </div>
-        {% endif %}
-
-        <!-- Tabla de datos -->
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <h2 class="text-xl font-semibold mb-4">Datos de Imágenes</h2>
-            
-            {% if image_data and image_data|length > 0 %}
-            <div class="overflow-x-auto">
-                <table class="min-w-full bg-white">
-                    <thead>
-                        <tr class="bg-gray-100 text-gray-600 uppercase text-sm leading-normal">
-                            <th class="py-3 px-6 text-left">ID</th>
-                            <th class="py-3 px-6 text-left">Archivo</th>
-                            <th class="py-3 px-6 text-left">Usuario</th>
-                            <th class="py-3 px-6 text-left">Fecha y Hora</th>
-                            <th class="py-3 px-6 text-center">
-                                <span class="text-red-500">R</span> / 
-                                <span class="text-green-500">G</span> / 
-                                <span class="text-blue-500">B</span>
-                            </th>
-                            <th class="py-3 px-6 text-center">Visualización</th>
-                        </tr>
-                    </thead>
-                    <tbody class="text-gray-600 text-sm">
-                        {% for item in image_data %}
-                        <tr class="border-b border-gray-200 hover:bg-gray-50">
-                            <td class="py-3 px-6 text-left">{{ item.id }}</td>
-                            <td class="py-3 px-6 text-left">{{ item.filename }}</td>
-                            <td class="py-3 px-6 text-left">{{ item.username }}</td>
-                            <td class="py-3 px-6 text-left">{{ item.timestamp }}</td>
-                            <td class="py-3 px-6 text-center">
-                                <span class="text-red-500 font-semibold">{{ item.red_pixels }}</span> / 
-                                <span class="text-green-500 font-semibold">{{ item.green_pixels }}</span> / 
-                                <span class="text-blue-500 font-semibold">{{ item.blue_pixels }}</span>
-                            </td>
-                            <td class="py-3 px-6 text-center">
-                                <div class="w-full bg-gray-200 rounded-full h-2.5 mb-4">
-                                    {% set total = item.red_pixels + item.green_pixels + item.blue_pixels %}
-                                    {% if total > 0 %}
-                                        {% set red_percent = (item.red_pixels / total * 100)|int %}
-                                        {% set green_percent = (item.green_pixels / total * 100)|int %}
-                                        {% set blue_percent = (item.blue_pixels / total * 100)|int %}
-                                        
-                                        <div class="bg-red-500 h-2.5 rounded-l-full" 
-                                             style="width: {{ red_percent }}%; display: inline-block;"></div>
-                                        <div class="bg-green-500 h-2.5" 
-                                             style="width: {{ green_percent }}%; display: inline-block;"></div>
-                                        <div class="bg-blue-500 h-2.5 rounded-r-full" 
-                                             style="width: {{ blue_percent }}%; display: inline-block;"></div>
-                                    {% endif %}
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="flex flex-col items-center justify-center py-12">
-                <div class="text-gray-400 mb-4">
-                    <i class="fas fa-database text-6xl"></i>
-                </div>
-                <p class="text-gray-500 text-xl">No hay datos disponibles</p>
-                <p class="text-gray-400 mt-2">Los datos aparecerán aquí cuando se procesen imágenes</p>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-
-    <footer class="bg-gray-800 text-white mt-12">
-        <div class="container mx-auto py-6 px-4">
-            <p class="text-center">&copy; 2025 Analizador de Imágenes. Todos los derechos reservados.</p>
-        </div>
-    </footer>
-
-    {% if image_data and image_data|length > 0 %}
-    <script>
-        // Preparar datos para el gráfico
-        const colorData = {
-            labels: ['Rojo', 'Verde', 'Azul'],
-            datasets: [{
-                label: 'Distribución promedio de colores',
-                data: [
-                    {{ image_data|sum(attribute='red_pixels') }},
-                    {{ image_data|sum(attribute='green_pixels') }},
-                    {{ image_data|sum(attribute='blue_pixels') }}
-                ],
-                backgroundColor: [
-                    'rgba(255, 99, 132, 0.7)',
-                    'rgba(75, 192, 192, 0.7)',
-                    'rgba(54, 162, 235, 0.7)'
-                ],
-                borderColor: [
-                    'rgb(255, 99, 132)',
-                    'rgb(75, 192, 192)',
-                    'rgb(54, 162, 235)'
-                ],
-                borderWidth: 1
-            }]
-        };
-
-        // Crear el gráfico de barras
-        const ctx = document.getElementById('colorChart').getContext('2d');
-        const colorChart = new Chart(ctx, {
-            type: 'bar',
-            data: colorData,
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    },
-                    title: {
-                        display: true,
-                        text: 'Distribución Total de Píxeles por Color'
-                    }
-                }
-            }
+        $('#tabla').DataTable({
+          order: [[5, 'desc']],
+          responsive: true,
+          language: {
+            search: "_INPUT_",
+            searchPlaceholder: "Buscar...",
+            lengthMenu: "Mostrar _MENU_ registros por página",
+            zeroRecords: "No se encontraron registros",
+            info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+            infoEmpty: "No hay registros disponibles",
+            infoFiltered: "(filtrado de _MAX_ registros totales)"
+          }
         });
-    </script>
-    {% endif %}
-</body>
-</html>
+
+      } catch (error) {
+        document.getElementById('contenido-tabla').innerHTML = `
+          <div class="alert alert-danger">
+            Error al cargar los datos.
+          </div>`;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', cargarDatos);
+  </script>
+{% endblock %}

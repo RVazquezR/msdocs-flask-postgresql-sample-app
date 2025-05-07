@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scala Image Generator - View Image</title>
+</head>
+<body>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const imageParam = urlParams.get('image');
+        if (imageParam) {
+            window.location.href = `base.html?image=${imageParam}`;
+        } else {
+            window.location.href = "base.html";
+        }
+    </script>
+</body>
+</html>
