@@ -37,7 +37,7 @@
                         Filtrar por usuario:
                     </label>
                     <input type="text" id="username" name="username" 
-                        value="{{ username_filter }}"
+                        value="{{ username_filter or '' }}"
                         class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
                 </div>
                 <div>
@@ -71,7 +71,7 @@
         </div>
 
         <!-- Estadísticas generales -->
-        {% if image_data %}
+        {% if image_data and image_data|length > 0 %}
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="bg-white rounded-lg shadow-md p-6 hover-scale transition-all">
                 <div class="flex items-center">
@@ -91,7 +91,15 @@
                     </div>
                     <div>
                         <p class="text-gray-500 text-sm">Usuarios únicos</p>
-                        <h3 class="text-2xl font-bold">{{ image_data|map(attribute='username')|unique|list|length }}</h3>
+                        <h3 class="text-2xl font-bold">
+                            {% set unique_users = [] %}
+                            {% for item in image_data %}
+                                {% if item.username not in unique_users %}
+                                    {% set _ = unique_users.append(item.username) %}
+                                {% endif %}
+                            {% endfor %}
+                            {{ unique_users|length }}
+                        </h3>
                     </div>
                 </div>
             </div>
@@ -104,7 +112,8 @@
                         <p class="text-gray-500 text-sm">Última actualización</p>
                         <h3 class="text-2xl font-bold">
                             {% if image_data %}
-                                {{ image_data|sort(attribute='timestamp', reverse=true)|first|attr('timestamp') }}
+                                {% set last_item = image_data|sort(attribute='timestamp', reverse=true)|first %}
+                                {{ last_item.timestamp }}
                             {% else %}
                                 N/A
                             {% endif %}
@@ -125,7 +134,7 @@
         <div class="bg-white rounded-lg shadow-md p-6">
             <h2 class="text-xl font-semibold mb-4">Datos de Imágenes</h2>
             
-            {% if image_data %}
+            {% if image_data and image_data|length > 0 %}
             <div class="overflow-x-auto">
                 <table class="min-w-full bg-white">
                     <thead>
@@ -194,7 +203,7 @@
         </div>
     </footer>
 
-    {% if image_data %}
+    {% if image_data and image_data|length > 0 %}
     <script>
         // Preparar datos para el gráfico
         const colorData = {
@@ -202,9 +211,9 @@
             datasets: [{
                 label: 'Distribución promedio de colores',
                 data: [
-                    {{ image_data|map(attribute='red_pixels')|sum }},
-                    {{ image_data|map(attribute='green_pixels')|sum }},
-                    {{ image_data|map(attribute='blue_pixels')|sum }}
+                    {{ image_data|sum(attribute='red_pixels') }},
+                    {{ image_data|sum(attribute='green_pixels') }},
+                    {{ image_data|sum(attribute='blue_pixels') }}
                 ],
                 backgroundColor: [
                     'rgba(255, 99, 132, 0.7)',
