@@ -5,3 +5,4 @@ flask_wtf
 psycopg2
 python-dotenv
 SQLAlchemy
+psycopg2-binary==2.9.5
