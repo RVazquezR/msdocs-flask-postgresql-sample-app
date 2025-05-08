@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Integer, String
+from sqlalchemy import Column, DateTime, Integer, LargeBinary, String
 from app import db
 
 class ImagenProcesada(db.Model):
