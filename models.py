@@ -10,10 +10,7 @@ class ImagenProcesada(db.Model):
     verde = Column(Integer)
     azul = Column(Integer)
     fecha_hora = Column(DateTime)
-
-    imagen_original = Column(LargeBinary)
-    imagen_byn = Column(LargeBinary)
-    imagen_pixelada = Column(LargeBinary) 
+ 
 
     def __str__(self):
         return f"{self.usuario} - {self.nombre_archivo} ({self.fecha_hora})"
